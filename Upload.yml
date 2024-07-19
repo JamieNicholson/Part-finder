@@ -1,0 +1,17 @@
+name: Upload File
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Process Excel file
+      run: |
+        pip install openpyxl
+        python process_excel.py
