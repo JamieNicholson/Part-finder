@@ -1,84 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Excel File</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Excel File</title>
 </head>
 <body>
-    <h1>Upload Excel File</h1>
-    <form id="uploadForm">
-        <input type="file" id="fileInput" accept=".xlsx,.xls">
-        <button type="submit">Upload</button>
-    </form>
+  <h1>Upload Excel File</h1>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" accept=".xlsx">
+    <button type="button" onclick="uploadFile()">Upload</button>
+  </form>
 
-    <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput.files.length === 0) {
-                alert('Please select a file!');
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = async function(event) {
-                const content = btoa(event.target.result);
-                console.log('File content encoded to base64:', content);
-
-                const repoOwner = 'JamieNicholson';
-                const repoName = 'Part-finder';
-                const filePath = 'excel_file.xlsx';
-                const token = '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';
-
-                try {
-                    // Retrieve the current SHA of the file
-                    const shaResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-                        headers: {
-                            'Authorization': `token ${token}`
-                        }
-                    });
-
-                    if (!shaResponse.ok) {
-                        const errorText = await shaResponse.text();
-                        console.error('Failed to retrieve file SHA:', errorText);
-                        alert('Failed to retrieve file SHA');
-                        return;
-                    }
-
-                    const shaData = await shaResponse.json();
-                    const sha = shaData.sha;
-                    console.log('File SHA:', sha);
-
-                    // Update the file content
-                    const updateResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: 'Update Excel file via GitHub Pages',
-                            content: content,
-                            sha: sha
-                        })
-                    });
-
-                    if (updateResponse.ok) {
-                        alert('File uploaded successfully!');
-                    } else {
-                        const errorText = await updateResponse.text();
-                        console.error('File upload failed:', errorText);
-                        alert('File upload failed: ' + errorText);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An error occurred: ' + error.message);
-                }
-            };
-            reader.readAsBinaryString(file);
-        });
-    </script>
+  <script src="app.js"></script>
 </body>
 </html>
