@@ -25,40 +25,56 @@
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const content = btoa(event.target.result);
+                console.log('File content encoded to base64:', content);
 
-                // Retrieve the current SHA of the file
-                const shaResponse = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel_file.xlsx', {
-                    headers: {
-                        'Authorization': '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'
+                const repoOwner = 'JamieNicholson';
+                const repoName = 'Part-finder';
+                const filePath = 'excel_file.xlsx';
+                const token = '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';
+
+                try {
+                    // Retrieve the current SHA of the file
+                    const shaResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+                        headers: {
+                            'Authorization': `token ${token}`
+                        }
+                    });
+
+                    if (!shaResponse.ok) {
+                        const errorText = await shaResponse.text();
+                        console.error('Failed to retrieve file SHA:', errorText);
+                        alert('Failed to retrieve file SHA');
+                        return;
                     }
-                });
 
-                if (!shaResponse.ok) {
-                    alert('Failed to retrieve file SHA');
-                    return;
-                }
+                    const shaData = await shaResponse.json();
+                    const sha = shaData.sha;
+                    console.log('File SHA:', sha);
 
-                const shaData = await shaResponse.json();
-                const sha = shaData.sha;
+                    // Update the file content
+                    const updateResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: 'Update Excel file via GitHub Pages',
+                            content: content,
+                            sha: sha
+                        })
+                    });
 
-                // Update the file content
-                const response = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel_file.xlsx', {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': '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',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: 'Update Excel file via GitHub Pages',
-                        content: content,
-                        sha: sha
-                    })
-                });
-
-                if (response.ok) {
-                    alert('File uploaded successfully!');
-                } else {
-                    alert('File upload failed!');
+                    if (updateResponse.ok) {
+                        alert('File uploaded successfully!');
+                    } else {
+                        const errorText = await updateResponse.text();
+                        console.error('File upload failed:', errorText);
+                        alert('File upload failed: ' + errorText);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred: ' + error.message);
                 }
             };
             reader.readAsBinaryString(file);
