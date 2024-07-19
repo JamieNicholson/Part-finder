@@ -26,6 +26,22 @@
             reader.onload = async function(event) {
                 const content = btoa(event.target.result);
 
+                // Retrieve the current SHA of the file
+                const shaResponse = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel_file.xlsx', {
+                    headers: {
+                        'Authorization': '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'
+                    }
+                });
+
+                if (!shaResponse.ok) {
+                    alert('Failed to retrieve file SHA');
+                    return;
+                }
+
+                const shaData = await shaResponse.json();
+                const sha = shaData.sha;
+
+                // Update the file content
                 const response = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel_file.xlsx', {
                     method: 'PUT',
                     headers: {
@@ -33,9 +49,9 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: 'Update Excel file via upload',
+                        message: 'Update Excel file via GitHub Pages',
                         content: content,
-                        sha: '8b137891791fe96927ad78e64b0aad7bded08bdc'
+                        sha: sha
                     })
                 });
 
