@@ -3,272 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jamie's part finder</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
-    <style>
-        #excelUploadContainer {
-            margin: 20px 0;
-        }
-        #qrResult strong {
-            font-weight: bold;
-        }
-        body {
-        	background-image: url('background.png');
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            color: #000000; 
-        }
-        input, p, span {
-            color: #ccbb00; 
-        }
-        input {
-            border: none;
-        }
-        #showTableButton, #resetButton {
-            padding: 5px 10px;
-            background-color: #00000022;
-            color: #ccbb00;
-            border: none;
-            border-radius: 1px;
-            cursor: pointer;
-            display: block;
-        }
-        #showTableButton {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        #resetButton {
-            position: absolute;
-            top: 10px;
-            right: 100px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-        	background-color: #00000088;
-            color: #ccbb00;
-            border: 1px solid #00000088;
-            padding: 20px;
-            text-align: left;
-        }
-        th {
-            background-color: #00003350;
-            color: #ccbb00;
-        }
-        #searchContainer {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-        }
-    </style>
+    <title>Upload Excel File</title>
 </head>
 <body>
-    <button id="showTableButton" onclick="showTable()">Show Table</button>
-    <button id="resetButton" onclick="resetSearch()">Reset Search</button>
-    <div id="excelUploadContainer">
-        <span id="fileStatus">Please wait...</span>
-    </div>
-    
-    <div id="searchContainer">
-        <select id="searchMethod" onchange="handleSearchMethodChange(this.value)">
-            <option value="closest match">closest match</option>
-            <option value="exact values">exact values</option>
-        </select>
-        <input type="text" id="searchInput" placeholder="known data (seperated by commas)" onchange="handleSearchInput(this.value)">
-    </div>
-    
-    <p id="partNumber"><strong>Part number:</strong> <span id="partNumberData"></span></p>
-    <div id="searchResult">
-        <p><strong>Location:</strong> <span id="locationData"></span></p>
-        <p><strong>Name:</strong> <span id="nameData"></span></p>
-    </div>
-    <div id="tableContainer" style="display: none;"></div>
-    
-<script>
-        let inventoryData;
-        let searchResults = [];
-        let tableEnabled = false;
-        let searchMethod = 'closest match';
+    <h1>Upload Excel File</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+        <button type="submit">Upload</button>
+    </form>
 
-        window.addEventListener('DOMContentLoaded', function() {
-            loadExcelFile('parts.xlsx');
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                alert('Please select a file!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const content = btoa(event.target.result);
+
+                const response = await fetch('https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME/contents/path/to/your/excel_file.xlsx', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token YOUR_GITHUB_TOKEN',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Update Excel file via upload',
+                        content: content,
+                        sha: 'YOUR_FILE_SHA'
+                    })
+                });
+
+                if (response.ok) {
+                    alert('File uploaded successfully!');
+                } else {
+                    alert('File upload failed!');
+                }
+            };
+            reader.readAsBinaryString(file);
         });
-
-        function loadExcelFile(filename) {
-            fetch(filename)
-                .then(response => response.arrayBuffer())
-                .then(data => {
-                    var workbook = XLSX.read(data, { type: 'array' });
-                    inventoryData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    console.log('Excel data loaded:', inventoryData);
-                    document.getElementById('fileStatus').textContent = 'Program ready'; 
-                })
-                .catch(error => {
-                    console.error('Error loading Excel file:', error);
-                    document.getElementById('fileStatus').textContent = 'Error loading file';
-                });
-        }
-
-        function handleSearchInput(input) {
-            const inputValues = input.split(',').map(value => value.trim().toLowerCase());
-            const validInputValues = inputValues.filter(value => value.length >= 2);
-
-            if (validInputValues.length > 0) {
-                if (searchMethod === 'closest match') {
-                    searchInventoryBestMatch(validInputValues);
-                } else if (searchMethod === 'exact values') {
-                    searchInventoryAccumulateMatches(validInputValues);
-                }
-            } else {
-                alert('Please enter at least one search term with a minimum of 2 characters.');
-            }
-        }
-
-        function handleSearchMethodChange(value) {
-            searchMethod = value;
-            resetSearch();
-        }
-
-        function searchInventoryBestMatch(inputValues) {
-            if (!inventoryData) {
-                console.error('Excel data not loaded.');
-                return;
-            }
-
-            let bestMatch = null;
-            let maxMatches = 0;
-            searchResults = [];
-
-            for (let row of inventoryData) {
-                let matchCount = 0;
-
-                for (let value of inputValues) {
-                    for (let cell in row) {
-                        if (String(row[cell]).toLowerCase().includes(value)) {
-                            matchCount++;
-                        }
-                    }
-                }
-
-                if (matchCount > 0) {
-                    searchResults.push({ row, matches: matchCount });
-                }
-
-                if (matchCount > maxMatches) {
-                    maxMatches = matchCount;
-                    bestMatch = row;
-                }
-            }
-
-            if (bestMatch) {
-                console.log('Best match found in Excel:', bestMatch);
-                document.getElementById('partNumberData').textContent = bestMatch['Material'] || 'N/A';
-                document.getElementById('locationData').textContent = bestMatch['Material type'] || 'N/A';
-                document.getElementById('nameData').textContent = bestMatch['Critical Part'] || 'N/A';
-            } else {
-                console.log('No match found for input values in Excel.');
-                document.getElementById('partNumberData').textContent = 'No match found in Excel';
-                document.getElementById('locationData').textContent = '';
-                document.getElementById('nameData').textContent = '';
-            }
-
-            searchResults.sort((a, b) => b.matches - a.matches);
-        }
-
-        function searchInventoryAccumulateMatches(inputValues) {
-            if (!inventoryData) {
-                console.error('Excel data not loaded.');
-                return;
-            }
-
-            let filteredResults = inventoryData;
-
-            inputValues.forEach(value => {
-                filteredResults = filteredResults.filter(row => {
-                    for (let cell in row) {
-                        if (String(row[cell]).toLowerCase().includes(value)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                });
-            });
-
-            searchResults = filteredResults.map(row => ({ row, matches: inputValues.length }));
-
-            if (searchResults.length > 0) {
-                const bestMatch = searchResults[0].row;
-                console.log('Best match found in Excel:', bestMatch);
-                document.getElementById('partNumberData').textContent = bestMatch['Material'] || 'N/A';
-                document.getElementById('locationData').textContent = bestMatch['Material type'] || 'N/A';
-                document.getElementById('nameData').textContent = bestMatch['Critical Part'] || 'N/A';
-            } else {
-                console.log('No match found for input values in Excel.');
-                document.getElementById('partNumberData').textContent = 'No match found in Excel';
-                document.getElementById('locationData').textContent = '';
-                document.getElementById('nameData').textContent = '';
-            }
-        }
-
-        function showTable() {
-            const tableContainer = document.getElementById('tableContainer');
-            if (tableEnabled) {
-                tableEnabled = false;
-                tableContainer.style.display = 'none';
-                return;
-            }
-            tableEnabled = true;
-            tableContainer.style.display = 'block';
-            tableContainer.innerHTML = '';
-
-            if (searchResults.length === 0) {
-                tableContainer.innerHTML = '<p>No relevant search terms found.</p>';
-                return;
-            }
-
-            const table = document.createElement('table');
-            const thead = document.createElement('thead');
-            const tbody = document.createElement('tbody');
-
-            const headers = Object.keys(searchResults[0].row);
-            const headerRow = document.createElement('tr');
-            
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-
-            searchResults.forEach(result => {
-                const row = document.createElement('tr');
-                headers.forEach(header => {
-                    const td = document.createElement('td');
-                    td.textContent = result.row[header] || '';
-                    row.appendChild(td);
-                });
-                tbody.appendChild(row);
-            });
-
-            table.appendChild(thead);
-            table.appendChild(tbody);
-            tableContainer.appendChild(table);
-        }
-
-        function resetSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('partNumberData').textContent = '';
-            document.getElementById('locationData').textContent = '';
-            document.getElementById('nameData').textContent = '';
-            searchResults = [];
-            document.getElementById('tableContainer').style.display = 'none';
-            tableEnabled = false;
-        }
     </script>
 </body>
 </html>
