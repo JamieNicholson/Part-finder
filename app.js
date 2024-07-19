@@ -12,6 +12,22 @@ async function uploadFile() {
     const content = e.target.result;
     const base64Content = btoa(content);
 
+    const getShaResponse = await fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/PATH_TO_FILE.xlsx', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'token YOUR_GITHUB_TOKEN',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!getShaResponse.ok) {
+      alert('Failed to get file SHA!');
+      return;
+    }
+
+    const fileData = await getShaResponse.json();
+    const sha = fileData.sha;
+
     const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/PATH_TO_FILE.xlsx', {
       method: 'PUT',
       headers: {
@@ -21,7 +37,7 @@ async function uploadFile() {
       body: JSON.stringify({
         message: 'Replace Excel file',
         content: base64Content,
-        sha: 'SHA_OF_THE_EXISTING_FILE'
+        sha: sha
       })
     });
 
