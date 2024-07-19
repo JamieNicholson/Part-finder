@@ -15,7 +15,7 @@ async function uploadFile() {
     const getShaResponse = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel.xlsx', {
       method: 'GET',
       headers: {
-        'Authorization': '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',
+        'Authorization': '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',
         'Accept': 'application/vnd.github.v3+json'
       }
     });
@@ -31,7 +31,7 @@ async function uploadFile() {
     const response = await fetch('https://api.github.com/repos/JamieNicholson/Part-finder/contents/excel.xlsx', {
       method: 'PUT',
       headers: {
-        'Authorization': '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',
+        'Authorization': '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',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
